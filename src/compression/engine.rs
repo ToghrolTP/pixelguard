@@ -94,7 +94,7 @@ impl CompressionEngine {
             oxipng::StripChunks::Safe
         };
 
-        match oxipng::optimize(&oxipng::InFile::Path(temp_path.clone()), &oxipng::OutFile::Path(Some(output_path.to_path_buf())), &options) {
+        match oxipng::optimize(&oxipng::InFile::Path(temp_path.clone()), &oxipng::OutFile::Path { path: Some(output_path.to_path_buf()), preserve_attrs: false }, &options) {
             Ok(_) => {
                 let _ = std::fs::remove_file(temp_path);
                 let metadata = std::fs::metadata(output_path).map_err(|e| format!("Failed to read output size: {}", e))?;
@@ -138,7 +138,7 @@ impl CompressionEngine {
         let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut output, settings.jpeg_quality);
         let (width, height) = rgb_img.dimensions();
         
-        encoder.encode(&rgb_img, width, height, image::ColorType::Rgb8)
+        encoder.encode(&rgb_img, width, height, image::ExtendedColorType::Rgb8)
             .map_err(|e| format!("JPEG encoding failed: {}", e))?;
 
         let metadata = std::fs::metadata(output_path).map_err(|e| format!("Failed to read output size: {}", e))?;
