@@ -1,7 +1,6 @@
-use crate::compression::CompressionResult;
+use crate::compression::{CompressionResult, CompressionStatus};
 use crate::file::FileManager;
 use eframe::egui;
-use std::path::PathBuf;
 
 pub struct OutputPanel {
     results: Vec<CompressionResult>,
@@ -78,13 +77,13 @@ impl OutputPanel {
 
         ui.horizontal(|ui| {
             match &result.status {
-                crate::compression::result::CompressionStatus::Success => {
+                CompressionStatus::Success => {
                     ui.colored_label(egui::Color32::GREEN, "✓");
                 }
-                crate::compression::result::CompressionStatus::Failed(_) => {
+                CompressionStatus::Failed(_) => {
                     ui.colored_label(egui::Color32::RED, "✗");
                 }
-                crate::compression::result::CompressionStatus::Skipped(_) => {
+                CompressionStatus::Skipped(_) => {
                     ui.colored_label(egui::Color32::YELLOW, "⚠");
                 }
             }
@@ -100,7 +99,7 @@ impl OutputPanel {
             ui.label(format!("{:.1}s", result.processing_time.as_secs_f32()));
         });
 
-        if let crate::compression::result::CompressionStatus::Failed(error) = &result.status {
+        if let CompressionStatus::Failed(error) = &result.status {
             ui.colored_label(egui::Color32::RED, format!("Error: {}", error));
         }
     }

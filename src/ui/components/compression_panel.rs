@@ -141,6 +141,8 @@ impl CompressionPanel {
     }
 
     fn update_progress(&mut self) {
+        let mut should_clear_receiver = false;
+        
         if let Some(receiver) = &self.progress_receiver {
             while let Ok(progress) = receiver.try_recv() {
                 match progress {
@@ -152,16 +154,20 @@ impl CompressionPanel {
                     }
                     CompressionProgress::Complete => {
                         self.is_processing = false;
-                        self.progress_receiver = None;
+                        should_clear_receiver = true;
                         self.status_message = "Compression completed!".to_string();
                     }
                     CompressionProgress::Error(error) => {
                         self.is_processing = false;
-                        self.progress_receiver = None;
+                        should_clear_receiver = true;
                         self.status_message = format!("Error: {}", error);
                     }
                 }
             }
+        }
+        
+        if should_clear_receiver {
+            self.progress_receiver = None;
         }
     }
 }
