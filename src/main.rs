@@ -1,5 +1,6 @@
 mod app;
 mod ui;
+mod file;
 
 use app::PixelGuardApp;
 use eframe::egui;
