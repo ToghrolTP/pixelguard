@@ -1,57 +1,119 @@
+use crate::compression::CompressionResult;
+use crate::file::FileManager;
 use eframe::egui;
+use std::path::PathBuf;
 
 pub struct OutputPanel {
-    output_directory: String,
-    compression_progress: f32,
-    is_processing: bool,
     results: Vec<CompressionResult>,
-}
-
-#[derive(Clone)]
-pub struct CompressionResult {
-    pub filename: String,
-    pub original_size: u64,
-    pub compressed_size: u64,
-    pub compression_ratio: f32,
+    show_details: bool,
 }
 
 impl OutputPanel {
     pub fn new() -> Self {
         Self {
-            output_directory: "output/".to_string(),
-            compression_progress: 0.0,
-            is_processing: false,
             results: Vec::new(),
+            show_details: false,
         }
     }
 
     pub fn render(&mut self, ui: &mut egui::Ui) {
         ui.group(|ui| {
-            ui.label("Output Settings:");
-            
             ui.horizontal(|ui| {
-                ui.label("Directory:");
-                ui.text_edit_singleline(&mut self.output_directory);
-                if ui.button("Browse").clicked() {
-                    // Directory dialog will be implemented later
+                ui.label("Results:");
+                if !self.results.is_empty() {
+                    ui.checkbox(&mut self.show_details, "Show details");
+                    if ui.button("Clear").clicked() {
+                        self.results.clear();
+                    }
+                    if ui.button("Open folder").clicked() {
+                        self.open_output_folder();
+                    }
                 }
             });
             
-            if self.is_processing {
-                ui.label("Processing...");
-                ui.add(egui::ProgressBar::new(self.compression_progress));
-            }
-            
-            if !self.results.is_empty() {
-                ui.separator();
-                ui.label("Results:");
-                for result in &self.results {
-                    ui.horizontal(|ui| {
-                        ui.label(&result.filename);
-                        ui.label(format!("{:.1}% reduction", result.compression_ratio * 100.0));
-                    });
+            if self.results.is_empty() {
+                ui.label("No compression results yet");
+            } else {
+                self.render_summary(ui);
+                if self.show_details {
+                    self.render_detailed_results(ui);
                 }
             }
         });
+    }
+
+    fn render_summary(&self, ui: &mut egui::Ui) {
+        let total_original: u64 = self.results.iter().map(|r| r.original_size).sum();
+        let total_compressed: u64 = self.results.iter().map(|r| r.compressed_size).sum();
+        let total_saved = if total_original > total_compressed { total_original - total_compressed } else { 0 };
+        let avg_ratio = if total_original > 0 { 1.0 - (total_compressed as f32 / total_original as f32) } else { 0.0 };
+
+        ui.separator();
+        ui.columns(4, |cols| {
+            cols[0].label(format!("Files: {}", self.results.len()));
+            cols[1].label(format!("Original: {}", FileManager::format_file_size(total_original)));
+            cols[2].label(format!("Compressed: {}", FileManager::format_file_size(total_compressed)));
+            cols[3].label(format!("Saved: {} ({:.1}%)", 
+                FileManager::format_file_size(total_saved), 
+                avg_ratio * 100.0
+            ));
+        });
+    }
+
+    fn render_detailed_results(&self, ui: &mut egui::Ui) {
+        ui.separator();
+        egui::ScrollArea::vertical()
+            .max_height(300.0)
+            .show(ui, |ui| {
+                for result in &self.results {
+                    self.render_result_row(ui, result);
+                }
+            });
+    }
+
+    fn render_result_row(&self, ui: &mut egui::Ui, result: &CompressionResult) {
+        let filename = result.input_path.file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        ui.horizontal(|ui| {
+            match &result.status {
+                crate::compression::result::CompressionStatus::Success => {
+                    ui.colored_label(egui::Color32::GREEN, "✓");
+                }
+                crate::compression::result::CompressionStatus::Failed(_) => {
+                    ui.colored_label(egui::Color32::RED, "✗");
+                }
+                crate::compression::result::CompressionStatus::Skipped(_) => {
+                    ui.colored_label(egui::Color32::YELLOW, "⚠");
+                }
+            }
+            
+            ui.label(&filename);
+            ui.label(FileManager::format_file_size(result.original_size));
+            ui.label("→");
+            ui.label(FileManager::format_file_size(result.compressed_size));
+            ui.colored_label(
+                if result.compression_ratio > 0.0 { egui::Color32::GREEN } else { egui::Color32::RED },
+                format!("{:.1}%", result.compression_ratio * 100.0)
+            );
+            ui.label(format!("{:.1}s", result.processing_time.as_secs_f32()));
+        });
+
+        if let crate::compression::result::CompressionStatus::Failed(error) = &result.status {
+            ui.colored_label(egui::Color32::RED, format!("Error: {}", error));
+        }
+    }
+
+    fn open_output_folder(&self) {
+        if let Some(result) = self.results.first() {
+            if let Some(parent) = result.output_path.parent() {
+                let _ = opener::open(parent);
+            }
+        }
+    }
+
+    pub fn add_results(&mut self, results: Vec<CompressionResult>) {
+        self.results.extend(results);
     }
 }
