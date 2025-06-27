@@ -1,7 +1,7 @@
 mod app;
-mod ui;
-mod file;
 mod compression;
+mod file;
+mod ui;
 
 use app::PixelGuardApp;
 use eframe::egui;
@@ -13,7 +13,7 @@ fn main() -> Result<(), eframe::Error> {
             .with_min_inner_size([600.0, 400.0]),
         ..Default::default()
     };
-    
+
     eframe::run_native(
         "PixelGuard - Lossless Image Compressor",
         options,

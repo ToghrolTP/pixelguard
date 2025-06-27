@@ -1,7 +1,7 @@
 mod engine;
-mod settings;
 mod result;
+mod settings;
 
 pub use engine::{CompressionEngine, CompressionProgress};
-pub use settings::{CompressionSettings, OutputFormat};
 pub use result::{CompressionResult, CompressionStatus};
+pub use settings::{CompressionSettings, OutputFormat};

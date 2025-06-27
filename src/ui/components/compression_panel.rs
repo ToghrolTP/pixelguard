@@ -1,4 +1,6 @@
-use crate::compression::{CompressionSettings, OutputFormat, CompressionEngine, CompressionProgress, CompressionResult};
+use crate::compression::{
+    CompressionEngine, CompressionProgress, CompressionResult, CompressionSettings, OutputFormat,
+};
 use crate::file::ImageFile;
 use eframe::egui;
 use std::sync::mpsc;
@@ -29,13 +31,13 @@ impl CompressionPanel {
 
         ui.group(|ui| {
             ui.label("Compression Settings:");
-            
+
             self.render_format_selector(ui);
             self.render_quality_settings(ui);
             self.render_output_settings(ui);
-            
+
             ui.separator();
-            
+
             if self.is_processing {
                 self.render_progress(ui);
             } else {
@@ -54,9 +56,21 @@ impl CompressionPanel {
             egui::ComboBox::from_id_source("format")
                 .selected_text(format!("{:?}", self.settings.output_format))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.settings.output_format, OutputFormat::Png, "PNG (Lossless)");
-                    ui.selectable_value(&mut self.settings.output_format, OutputFormat::WebP, "WebP");
-                    ui.selectable_value(&mut self.settings.output_format, OutputFormat::Jpeg, "JPEG");
+                    ui.selectable_value(
+                        &mut self.settings.output_format,
+                        OutputFormat::Png,
+                        "PNG (Lossless)",
+                    );
+                    ui.selectable_value(
+                        &mut self.settings.output_format,
+                        OutputFormat::WebP,
+                        "WebP",
+                    );
+                    ui.selectable_value(
+                        &mut self.settings.output_format,
+                        OutputFormat::Jpeg,
+                        "JPEG",
+                    );
                 });
         });
     }
@@ -72,7 +86,10 @@ impl CompressionPanel {
             OutputFormat::WebP => {
                 ui.horizontal(|ui| {
                     ui.label("Quality:");
-                    ui.add(egui::Slider::new(&mut self.settings.webp_quality, 0.0..=100.0));
+                    ui.add(egui::Slider::new(
+                        &mut self.settings.webp_quality,
+                        0.0..=100.0,
+                    ));
                 });
             }
             OutputFormat::Jpeg => {
@@ -94,13 +111,13 @@ impl CompressionPanel {
                 }
             }
         });
-        
+
         ui.checkbox(&mut self.settings.preserve_metadata, "Preserve metadata");
     }
 
     fn render_compress_button(&mut self, ui: &mut egui::Ui, files: &[ImageFile]) {
         let can_compress = !files.is_empty() && self.settings.validate().is_ok();
-        
+
         ui.add_enabled_ui(can_compress, |ui| {
             if ui.button("Compress Images").clicked() {
                 self.start_compression(files.to_vec());
@@ -131,7 +148,7 @@ impl CompressionPanel {
 
         let settings = self.settings.clone();
         let result_sender = self.result_sender.clone();
-        
+
         std::thread::spawn(move || {
             let results = CompressionEngine::compress_files(files, settings, progress_sender);
             if let Some(sender) = result_sender {
@@ -142,12 +159,17 @@ impl CompressionPanel {
 
     fn update_progress(&mut self) {
         let mut should_clear_receiver = false;
-        
+
         if let Some(receiver) = &self.progress_receiver {
             while let Ok(progress) = receiver.try_recv() {
                 match progress {
-                    CompressionProgress::Processing { current, total, filename } => {
-                        self.status_message = format!("Processing {} ({}/{})", filename, current, total);
+                    CompressionProgress::Processing {
+                        current,
+                        total,
+                        filename,
+                    } => {
+                        self.status_message =
+                            format!("Processing {} ({}/{})", filename, current, total);
                     }
                     CompressionProgress::Progress(value) => {
                         self.current_progress = value;
@@ -165,7 +187,7 @@ impl CompressionPanel {
                 }
             }
         }
-        
+
         if should_clear_receiver {
             self.progress_receiver = None;
         }

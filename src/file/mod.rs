@@ -24,7 +24,10 @@ pub struct FileManager;
 impl FileManager {
     pub fn open_file_dialog() -> Option<Vec<PathBuf>> {
         rfd::FileDialog::new()
-            .add_filter("Images", &["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff"])
+            .add_filter(
+                "Images",
+                &["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff"],
+            )
             .set_title("Select Images")
             .pick_files()
     }
@@ -33,7 +36,7 @@ impl FileManager {
         let metadata = std::fs::metadata(&path).ok()?;
         let name = path.file_name()?.to_string_lossy().to_string();
         let format = Self::detect_format(&path);
-        
+
         Some(ImageFile {
             path,
             name,

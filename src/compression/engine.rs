@@ -1,4 +1,4 @@
-use crate::compression::{CompressionSettings, CompressionResult, OutputFormat};
+use crate::compression::{CompressionResult, CompressionSettings, OutputFormat};
 use crate::file::ImageFile;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
@@ -18,7 +18,8 @@ impl CompressionEngine {
         // Ensure output directory exists
         if let Err(e) = std::fs::create_dir_all(&settings.output_directory) {
             let _ = progress_sender.send(CompressionProgress::Error(format!(
-                "Failed to create output directory: {}", e
+                "Failed to create output directory: {}",
+                e
             )));
             return results;
         }
@@ -43,9 +44,9 @@ impl CompressionEngine {
 
     fn compress_single_file(file: &ImageFile, settings: &CompressionSettings) -> CompressionResult {
         let start_time = Instant::now();
-        
+
         let output_path = Self::generate_output_path(file, settings);
-        
+
         match Self::perform_compression(file, &output_path, settings) {
             Ok(compressed_size) => {
                 let processing_time = start_time.elapsed();
@@ -80,10 +81,11 @@ impl CompressionEngine {
     ) -> Result<u64, String> {
         // Load and convert image to PNG
         let img = image::open(&file.path).map_err(|e| format!("Failed to load image: {}", e))?;
-        
+
         // Save as PNG first
         let temp_path = output_path.with_extension("temp.png");
-        img.save(&temp_path).map_err(|e| format!("Failed to save PNG: {}", e))?;
+        img.save(&temp_path)
+            .map_err(|e| format!("Failed to save PNG: {}", e))?;
 
         // Optimize with oxipng
         let mut options = oxipng::Options::default();
@@ -94,10 +96,18 @@ impl CompressionEngine {
             oxipng::StripChunks::Safe
         };
 
-        match oxipng::optimize(&oxipng::InFile::Path(temp_path.clone()), &oxipng::OutFile::Path { path: Some(output_path.to_path_buf()), preserve_attrs: false }, &options) {
+        match oxipng::optimize(
+            &oxipng::InFile::Path(temp_path.clone()),
+            &oxipng::OutFile::Path {
+                path: Some(output_path.to_path_buf()),
+                preserve_attrs: false,
+            },
+            &options,
+        ) {
             Ok(_) => {
                 let _ = std::fs::remove_file(temp_path);
-                let metadata = std::fs::metadata(output_path).map_err(|e| format!("Failed to read output size: {}", e))?;
+                let metadata = std::fs::metadata(output_path)
+                    .map_err(|e| format!("Failed to read output size: {}", e))?;
                 Ok(metadata.len())
             }
             Err(e) => {
@@ -113,15 +123,16 @@ impl CompressionEngine {
         settings: &CompressionSettings,
     ) -> Result<u64, String> {
         let img = image::open(&file.path).map_err(|e| format!("Failed to load image: {}", e))?;
-        
+
         let rgba_img = img.to_rgba8();
         let (width, height) = rgba_img.dimensions();
 
         let encoder = webp::Encoder::from_rgba(&rgba_img, width, height);
         let encoded = encoder.encode(settings.webp_quality);
 
-        std::fs::write(output_path, &*encoded).map_err(|e| format!("Failed to write WebP: {}", e))?;
-        
+        std::fs::write(output_path, &*encoded)
+            .map_err(|e| format!("Failed to write WebP: {}", e))?;
+
         Ok(encoded.len() as u64)
     }
 
@@ -131,17 +142,21 @@ impl CompressionEngine {
         settings: &CompressionSettings,
     ) -> Result<u64, String> {
         let img = image::open(&file.path).map_err(|e| format!("Failed to load image: {}", e))?;
-        
+
         let rgb_img = img.to_rgb8();
-        let mut output = std::fs::File::create(output_path).map_err(|e| format!("Failed to create output file: {}", e))?;
-        
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut output, settings.jpeg_quality);
+        let mut output = std::fs::File::create(output_path)
+            .map_err(|e| format!("Failed to create output file: {}", e))?;
+
+        let mut encoder =
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut output, settings.jpeg_quality);
         let (width, height) = rgb_img.dimensions();
-        
-        encoder.encode(&rgb_img, width, height, image::ExtendedColorType::Rgb8)
+
+        encoder
+            .encode(&rgb_img, width, height, image::ExtendedColorType::Rgb8)
             .map_err(|e| format!("JPEG encoding failed: {}", e))?;
 
-        let metadata = std::fs::metadata(output_path).map_err(|e| format!("Failed to read output size: {}", e))?;
+        let metadata = std::fs::metadata(output_path)
+            .map_err(|e| format!("Failed to read output size: {}", e))?;
         Ok(metadata.len())
     }
 
@@ -154,14 +169,18 @@ impl CompressionEngine {
 
         let stem = file.path.file_stem().unwrap_or_default();
         let filename = format!("{}_compressed.{}", stem.to_string_lossy(), extension);
-        
+
         Path::new(&settings.output_directory).join(filename)
     }
 }
 
 #[derive(Clone, Debug)]
 pub enum CompressionProgress {
-    Processing { current: usize, total: usize, filename: String },
+    Processing {
+        current: usize,
+        total: usize,
+        filename: String,
+    },
     Progress(f32),
     Complete,
     Error(String),

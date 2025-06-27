@@ -8,9 +8,9 @@ pub enum OutputFormat {
 #[derive(Clone, Debug)]
 pub struct CompressionSettings {
     pub output_format: OutputFormat,
-    pub png_level: u8,        // 1-6
-    pub webp_quality: f32,    // 0.0-100.0
-    pub jpeg_quality: u8,     // 1-100
+    pub png_level: u8,     // 1-6
+    pub webp_quality: f32, // 0.0-100.0
+    pub jpeg_quality: u8,  // 1-100
     pub preserve_metadata: bool,
     pub output_directory: String,
 }
